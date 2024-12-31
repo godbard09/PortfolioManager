@@ -5,8 +5,10 @@ import json
 import ccxt
 from datetime import datetime
 
+# Tệp lưu trữ danh mục đầu tư
 PORTFOLIO_FILE = "portfolio.json"
 
+# Tải và lưu danh mục đầu tư
 def load_portfolio():
     if os.path.exists(PORTFOLIO_FILE):
         with open(PORTFOLIO_FILE, "r") as f:
@@ -17,9 +19,13 @@ def save_portfolio(portfolio):
     with open(PORTFOLIO_FILE, "w") as f:
         json.dump(portfolio, f, indent=4)
 
+# Danh mục đầu tư
 portfolio = load_portfolio()
+
+# Sàn giao dịch KuCoin
 exchange = ccxt.kucoin()
 
+# Lấy danh sách các cặp giao dịch
 def fetch_symbols():
     try:
         markets = exchange.load_markets()
@@ -28,6 +34,7 @@ def fetch_symbols():
         print(f"Error fetching symbols: {e}")
         return []
 
+# Flask App
 app = Flask(__name__)
 
 @app.route('/portfolio', methods=['GET', 'POST'])
