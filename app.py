@@ -3,12 +3,10 @@ import threading
 import os
 import json
 import ccxt
-from datetime import datetime
+from datetime import datetime, timedelta
 
-# Tệp lưu trữ danh mục đầu tư
 PORTFOLIO_FILE = "portfolio.json"
 
-# Tải và lưu danh mục đầu tư
 def load_portfolio():
     if os.path.exists(PORTFOLIO_FILE):
         with open(PORTFOLIO_FILE, "r") as f:
@@ -19,13 +17,9 @@ def save_portfolio(portfolio):
     with open(PORTFOLIO_FILE, "w") as f:
         json.dump(portfolio, f, indent=4)
 
-# Danh mục đầu tư
 portfolio = load_portfolio()
-
-# Sàn giao dịch KuCoin
 exchange = ccxt.kucoin()
 
-# Lấy danh sách các cặp giao dịch
 def fetch_symbols():
     try:
         markets = exchange.load_markets()
@@ -34,12 +28,19 @@ def fetch_symbols():
         print(f"Error fetching symbols: {e}")
         return []
 
-# Flask App
+def fetch_current_price(symbol):
+    try:
+        ticker = exchange.fetch_ticker(symbol)
+        return ticker['last']
+    except Exception as e:
+        print(f"Error fetching current price for {symbol}: {e}")
+        return None
+
 app = Flask(__name__)
 
 @app.route('/portfolio', methods=['GET', 'POST'])
 def portfolio_default():
-    chat_id = "default_user"  # ID mặc định
+    chat_id = "default_user"
     if chat_id not in portfolio:
         portfolio[chat_id] = {"holdings": [], "transactions": []}
         save_portfolio(portfolio)
@@ -56,7 +57,7 @@ def portfolio_web(chat_id):
         symbol = request.form.get('symbol')
         quantity = float(request.form.get('quantity', 0))
         price = float(request.form.get('price', 0))
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
 
         if not symbol or quantity <= 0 or price <= 0:
             return "Invalid input!", 400
@@ -86,12 +87,17 @@ def portfolio_web(chat_id):
             else:
                 return "Not enough holdings to sell!", 400
 
-    total_pnl = sum(t["pnl"] for t in portfolio[chat_id]["transactions"])
     portfolio_data = portfolio[chat_id]["holdings"]
     transactions_data = portfolio[chat_id]["transactions"]
     available_symbols = fetch_symbols()
 
-    # Giao diện HTML
+    for holding in portfolio_data:
+        holding["current_price"] = fetch_current_price(holding["symbol"])
+        holding["current_pnl"] = round((holding["current_price"] - holding["price"]) * holding["quantity"], 2) if holding["current_price"] else "N/A"
+
+    total_pnl = sum(t["pnl"] for t in transactions_data if t["pnl"] is not None)
+    total_pnl += sum(h["current_pnl"] for h in portfolio_data if isinstance(h["current_pnl"], (int, float)))
+
     html_template = """
     <!DOCTYPE html>
     <html lang="en">
@@ -101,7 +107,7 @@ def portfolio_web(chat_id):
         <title>Portfolio Manager</title>
         <style>
             table {
-                width: 80%;
+                width: 90%;
                 margin: 20px auto;
                 border-collapse: collapse;
             }
@@ -113,21 +119,27 @@ def portfolio_web(chat_id):
             th {
                 background-color: #f2f2f2;
             }
-            form {
-                margin: 20px auto;
-                text-align: center;
+            .positive {
+                color: green;
+            }
+            .negative {
+                color: red;
             }
             .summary {
                 margin: 20px auto;
                 text-align: center;
                 font-size: 1.2em;
             }
+            form {
+                margin: 20px auto;
+                text-align: center;
+            }
         </style>
     </head>
     <body>
         <h1 style="text-align:center;">Portfolio Manager</h1>
         <div class="summary">
-            <p><b>Total P&L:</b> {{ total_pnl | round(2) }} USD</p>
+            <p><b>Total P&L:</b> <span class="{{ 'positive' if total_pnl >= 0 else 'negative' }}">{{ total_pnl | round(2) }}</span> USD</p>
         </div>
         <h2 style="text-align:center;">Holdings</h2>
         <table>
@@ -136,7 +148,9 @@ def portfolio_web(chat_id):
                     <th>Symbol</th>
                     <th>Quantity</th>
                     <th>Buy Price</th>
-                    <th>Timestamp</th>
+                    <th>Buy Time</th>
+                    <th>Current Price</th>
+                    <th>Current P&L</th>
                 </tr>
             </thead>
             <tbody>
@@ -146,6 +160,8 @@ def portfolio_web(chat_id):
                     <td>{{ entry['quantity'] }}</td>
                     <td>{{ entry['price'] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
+                    <td>{{ entry['current_price'] }}</td>
+                    <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -158,8 +174,8 @@ def portfolio_web(chat_id):
                     <th>Quantity</th>
                     <th>Buy Price</th>
                     <th>Sell Price</th>
+                    <th>Sell Time</th>
                     <th>P&L</th>
-                    <th>Timestamp</th>
                 </tr>
             </thead>
             <tbody>
@@ -169,8 +185,8 @@ def portfolio_web(chat_id):
                     <td>{{ entry['quantity'] }}</td>
                     <td>{{ entry['buy_price'] }}</td>
                     <td>{{ entry['sell_price'] }}</td>
-                    <td>{{ entry['pnl'] | round(2) }}</td>
                     <td>{{ entry['timestamp'] }}</td>
+                    <td class="{{ 'positive' if entry['pnl'] >= 0 else 'negative' }}">{{ entry['pnl'] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -201,7 +217,6 @@ def portfolio_web(chat_id):
         html_template,
         portfolio=portfolio_data,
         transactions=transactions_data,
-        available_symbols=available_symbols,
         total_pnl=total_pnl
     )
 
