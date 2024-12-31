@@ -123,10 +123,10 @@ def portfolio_web(chat_id):
     # Render template
     html_template = """
     <!DOCTYPE html>
-    <html lang=\"en\">
+    <html lang="en">
     <head>
-        <meta charset=\"UTF-8\">
-        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Portfolio Manager</title>
         <style>
             table {
@@ -157,11 +157,18 @@ def portfolio_web(chat_id):
                 margin: 20px auto;
                 text-align: center;
             }
+            .delete-button {
+                background-color: red;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                cursor: pointer;
+            }
         </style>
     </head>
     <body>
-        <h1 style=\"text-align:center;\">Portfolio Manager</h1>
-        <h2 style=\"text-align:center;\">Total P&L by Symbol</h2>
+        <h1 style="text-align:center;">Portfolio Manager</h1>
+        <h2 style="text-align:center;">Total P&L by Symbol</h2>
         <table>
             <thead>
                 <tr>
@@ -175,12 +182,12 @@ def portfolio_web(chat_id):
                 <tr>
                     <td>{{ row['symbol'] }}</td>
                     <td>{{ row['quantity'] }} {{ row['symbol'].split('/')[0] }}</td>
-                    <td class=\"{{ 'positive' if row['current_pnl'] >= 0 else 'negative' }}\">{{ row['current_pnl'] }} {{ row['unit'] }}</td>
+                    <td class="{{ 'positive' if row['current_pnl'] >= 0 else 'negative' }}">{{ row['current_pnl'] }} {{ row['unit'] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <h2 style=\"text-align:center;\">Holdings</h2>
+        <h2 style="text-align:center;">Holdings</h2>
         <table>
             <thead>
                 <tr>
@@ -191,6 +198,7 @@ def portfolio_web(chat_id):
                     <th>Total Cost</th>
                     <th>Current Price</th>
                     <th>Current P&L</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -202,12 +210,19 @@ def portfolio_web(chat_id):
                     <td>{{ entry['timestamp'] }}</td>
                     <td>{{ entry['total_cost'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['current_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
-                    <td class=\"{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}\">{{ entry['current_pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="symbol" value="{{ entry['symbol'] }}">
+                            <button type="submit" class="delete-button">Delete</button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <h2 style=\"text-align:center;\">Transactions</h2>
+        <h2 style="text-align:center;">Transactions</h2>
         <table>
             <thead>
                 <tr>
@@ -229,35 +244,40 @@ def portfolio_web(chat_id):
                     <td>{{ entry['sell_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['total_sale'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
-                    <td class=\"{{ 'positive' if entry['pnl'] >= 0 else 'negative' }}\">{{ entry['pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td class="{{ 'positive' if entry['pnl'] >= 0 else 'negative' }}">{{ entry['pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <form method=\"POST\">
+        <form method="POST">
             <h3>Buy or Sell</h3>
-            <label for=\"action\">Action:</label>
-            <select id=\"action\" name=\"action\">
-                <option value=\"buy\">Buy</option>
-                <option value=\"sell\">Sell</option>
+            <label for="action">Action:</label>
+            <select id="action" name="action">
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
             </select>
-            <label for=\"symbol\">Symbol:</label>
-            <select id=\"symbol\" name=\"symbol\" required>
+            <label for="symbol">Symbol:</label>
+            <select id="symbol" name="symbol" required>
                 {% for symbol in available_symbols %}
-                <option value=\"{{ symbol }}\">{{ symbol }}</option>
+                <option value="{{ symbol }}">{{ symbol }}</option>
                 {% endfor %}
             </select>
-            <label for=\"quantity\">Quantity:</label>
-            <input type=\"number\" id=\"quantity\" name=\"quantity\" step=\"0.01\" required>
-            <label for=\"price\">Price:</label>
-            <input type=\"number\" id=\"price\" name=\"price\" step=\"0.01\" required>
-            <label for=\"timestamp\">Time (UTC+7):</label>
-            <input type=\"date\" id=\"timestamp\" name=\"timestamp\" required>
-            <button type=\"submit\">Submit</button>
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity" name="quantity" step="0.01" required>
+            <label for="price">Price:</label>
+            <input type="number" id="price" name="price" step="0.01" required>
+            <label for="timestamp">Time (UTC+7):</label>
+            <input type="date" id="timestamp" name="timestamp" required>
+            <button type="submit">Submit</button>
         </form>
     </body>
     </html>
     """
+    if request.method == 'POST' and request.form.get('action') == 'delete':
+        symbol_to_delete = request.form.get('symbol')
+        portfolio[chat_id]["holdings"] = [h for h in portfolio[chat_id]["holdings"] if h["symbol"] != symbol_to_delete]
+        save_portfolio(portfolio)
+
     return render_template_string(
         html_template,
         portfolio=portfolio_data,
