@@ -5,10 +5,8 @@ import json
 import ccxt
 from datetime import datetime
 
-# Tệp lưu trữ danh mục đầu tư
 PORTFOLIO_FILE = "portfolio.json"
 
-# Tải và lưu danh mục đầu tư
 def load_portfolio():
     if os.path.exists(PORTFOLIO_FILE):
         with open(PORTFOLIO_FILE, "r") as f:
@@ -19,13 +17,9 @@ def save_portfolio(portfolio):
     with open(PORTFOLIO_FILE, "w") as f:
         json.dump(portfolio, f, indent=4)
 
-# Danh mục đầu tư
 portfolio = load_portfolio()
-
-# Sàn giao dịch KuCoin
 exchange = ccxt.kucoin()
 
-# Lấy danh sách các cặp giao dịch
 def fetch_symbols():
     try:
         markets = exchange.load_markets()
@@ -34,20 +28,23 @@ def fetch_symbols():
         print(f"Error fetching symbols: {e}")
         return []
 
-# Flask App
 app = Flask(__name__)
 
+@app.route('/portfolio', methods=['GET', 'POST'])
+def portfolio_default():
+    chat_id = "default_user"  # ID mặc định
+    if chat_id not in portfolio:
+        portfolio[chat_id] = {"holdings": [], "transactions": []}
+        save_portfolio(portfolio)
+    return portfolio_web(chat_id)
+
 @app.route('/portfolio/<chat_id>', methods=['GET', 'POST'])
-def portfolio_web():
-    chat_id = "default_user"
-    
-    # Tải danh mục đầu tư cho người dùng
+def portfolio_web(chat_id):
     if chat_id not in portfolio:
         portfolio[chat_id] = {"holdings": [], "transactions": []}
         save_portfolio(portfolio)
 
     if request.method == 'POST':
-        # Xử lý thêm hoặc chỉnh sửa giao dịch
         action = request.form.get('action')
         symbol = request.form.get('symbol')
         quantity = float(request.form.get('quantity', 0))
@@ -58,16 +55,13 @@ def portfolio_web():
             return "Invalid input!", 400
 
         if action == "buy":
-            # Thêm giao dịch mua
             portfolio[chat_id]["holdings"].append({"symbol": symbol, "quantity": quantity, "price": price, "timestamp": timestamp})
             save_portfolio(portfolio)
 
         elif action == "sell":
-            # Tìm giao dịch tương ứng để tính lãi/lỗ
             for holding in portfolio[chat_id]["holdings"]:
                 if holding["symbol"] == symbol:
                     if holding["quantity"] >= quantity:
-                        # Tính toán lãi/lỗ
                         pnl = (price - holding["price"]) * quantity
                         portfolio[chat_id]["transactions"].append({
                             "symbol": symbol,
@@ -77,7 +71,6 @@ def portfolio_web():
                             "pnl": pnl,
                             "timestamp": timestamp
                         })
-                        # Cập nhật số lượng còn lại
                         holding["quantity"] -= quantity
                         if holding["quantity"] == 0:
                             portfolio[chat_id]["holdings"].remove(holding)
@@ -86,14 +79,9 @@ def portfolio_web():
             else:
                 return "Not enough holdings to sell!", 400
 
-    # Tính toán tổng P&L từ tất cả giao dịch
     total_pnl = sum(t["pnl"] for t in portfolio[chat_id]["transactions"])
-
-    # Hiển thị danh mục hiện tại
     portfolio_data = portfolio[chat_id]["holdings"]
     transactions_data = portfolio[chat_id]["transactions"]
-
-    # Lấy danh sách các cặp giao dịch
     available_symbols = fetch_symbols()
 
     # Giao diện HTML
@@ -211,8 +199,7 @@ def portfolio_web():
     )
 
 def run_flask():
-    """Chạy Flask server trên luồng riêng."""
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
-# Chạy Flask server trong luồng riêng
 threading.Thread(target=run_flask).start()
