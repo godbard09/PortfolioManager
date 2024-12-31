@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, render_template_string
 import threading
 import os
 import json
@@ -57,13 +57,18 @@ def portfolio_web(chat_id):
         symbol = request.form.get('symbol')
         quantity = float(request.form.get('quantity', 0))
         price = float(request.form.get('price', 0))
-        timestamp = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = request.form.get('timestamp')
 
-        if not symbol or quantity <= 0 or price <= 0:
+        if not symbol or quantity <= 0 or price <= 0 or not timestamp:
             return "Invalid input!", 400
 
         if action == "buy":
-            portfolio[chat_id]["holdings"].append({"symbol": symbol, "quantity": quantity, "price": price, "timestamp": timestamp})
+            portfolio[chat_id]["holdings"].append({
+                "symbol": symbol,
+                "quantity": quantity,
+                "price": price,
+                "timestamp": timestamp
+            })
             save_portfolio(portfolio)
 
         elif action == "sell":
@@ -133,9 +138,6 @@ def portfolio_web(chat_id):
             form {
                 margin: 20px auto;
                 text-align: center;
-            }
-            #symbol {
-                width: 300px;
             }
         </style>
     </head>
@@ -211,6 +213,8 @@ def portfolio_web(chat_id):
             <input type="number" id="quantity" name="quantity" step="0.01" required>
             <label for="price">Price:</label>
             <input type="number" id="price" name="price" step="0.01" required>
+            <label for="timestamp">Time (UTC+7):</label>
+            <input type="datetime-local" id="timestamp" name="timestamp" required>
             <button type="submit">Submit</button>
         </form>
     </body>
@@ -220,8 +224,7 @@ def portfolio_web(chat_id):
         html_template,
         portfolio=portfolio_data,
         transactions=transactions_data,
-        total_pnl=total_pnl,
-        available_symbols=available_symbols
+        total_pnl=total_pnl
     )
 
 if __name__ == "__main__":
