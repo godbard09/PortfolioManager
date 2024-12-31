@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, render_template_string
-import threading
 import os
 import json
 import ccxt
@@ -29,14 +28,6 @@ def fetch_symbols():
         return []
 
 app = Flask(__name__)
-
-@app.route('/portfolio', methods=['GET', 'POST'])
-def portfolio_default():
-    chat_id = "default_user"  # ID mặc định
-    if chat_id not in portfolio:
-        portfolio[chat_id] = {"holdings": [], "transactions": []}
-        save_portfolio(portfolio)
-    return portfolio_web(chat_id)
 
 @app.route('/portfolio/<chat_id>', methods=['GET', 'POST'])
 def portfolio_web(chat_id):
@@ -198,8 +189,6 @@ def portfolio_web(chat_id):
         total_pnl=total_pnl
     )
 
-def run_flask():
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
-
-threading.Thread(target=run_flask).start()
+    app.run(host='0.0.0.0', port=port)
