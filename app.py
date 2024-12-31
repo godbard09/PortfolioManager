@@ -37,8 +37,10 @@ def fetch_symbols():
 # Flask App
 app = Flask(__name__)
 
-@app.route('/portfolio/<chat_id>', methods=['GET', 'POST'])
-def portfolio_web(chat_id):
+@app.route('/portfolio, methods=['GET', 'POST'])
+def portfolio_web():
+    chat_id = "default_user"
+    
     # Tải danh mục đầu tư cho người dùng
     if chat_id not in portfolio:
         portfolio[chat_id] = {"holdings": [], "transactions": []}
