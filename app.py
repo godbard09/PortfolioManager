@@ -64,10 +64,13 @@ def portfolio_web(chat_id):
         price = float(request.form.get('price', 0))
         timestamp = request.form.get('timestamp')
 
-        if not symbol or quantity <= 0 or price <= 0 or not timestamp:
-            return "Invalid input!", 400
+        if action == "delete":
+            portfolio[chat_id]["holdings"] = [h for h in portfolio[chat_id]["holdings"] if h["symbol"] != symbol]
+            save_portfolio(portfolio)
+        elif action == "buy":
+            if not symbol or quantity <= 0 or price <= 0 or not timestamp:
+                return "Invalid input!", 400
 
-        if action == "buy":
             portfolio[chat_id]["holdings"].append({
                 "symbol": symbol,
                 "quantity": quantity,
@@ -78,6 +81,9 @@ def portfolio_web(chat_id):
             save_portfolio(portfolio)
 
         elif action == "sell":
+            if not symbol or quantity <= 0 or price <= 0 or not timestamp:
+                return "Invalid input!", 400
+
             for holding in portfolio[chat_id]["holdings"]:
                 if holding["symbol"] == symbol:
                     if holding["quantity"] >= quantity:
@@ -273,10 +279,6 @@ def portfolio_web(chat_id):
     </body>
     </html>
     """
-    if request.method == 'POST' and request.form.get('action') == 'delete':
-        symbol_to_delete = request.form.get('symbol')
-        portfolio[chat_id]["holdings"] = [h for h in portfolio[chat_id]["holdings"] if h["symbol"] != symbol_to_delete]
-        save_portfolio(portfolio)
 
     return render_template_string(
         html_template,
