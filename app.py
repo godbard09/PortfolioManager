@@ -204,7 +204,7 @@ def portfolio_web(chat_id):
                     <th>Total Cost</th>
                     <th>Current Price</th>
                     <th>Current P&L</th>
-                    <th>Actions</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
