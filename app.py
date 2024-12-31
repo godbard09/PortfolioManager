@@ -8,7 +8,6 @@ from datetime import datetime
 PORTFOLIO_FILE = "portfolio.json"
 
 # Load and save portfolio
-
 def load_portfolio():
     if os.path.exists(PORTFOLIO_FILE):
         with open(PORTFOLIO_FILE, "r") as f:
@@ -23,17 +22,15 @@ portfolio = load_portfolio()
 exchange = ccxt.kucoin()
 
 # Fetch symbols dynamically
-
 def fetch_symbols():
     try:
         markets = exchange.load_markets()
-        return list(markets.keys())
+        return list(markets.keys())  # Fetch all symbols dynamically from the exchange
     except Exception as e:
         print(f"Error fetching symbols: {e}")
-        return []
+        return []  # Return an empty list if fetching fails
 
 # Fetch current price
-
 def fetch_current_price(symbol):
     try:
         ticker = exchange.fetch_ticker(symbol)
@@ -43,7 +40,6 @@ def fetch_current_price(symbol):
         return None
 
 # Flask app
-
 app = Flask(__name__)
 
 @app.route('/portfolio', methods=['GET', 'POST'])
@@ -233,7 +229,8 @@ def portfolio_web(chat_id):
         html_template,
         portfolio=portfolio_data,
         transactions=transactions_data,
-        total_pnl=total_pnl
+        total_pnl=total_pnl,
+        available_symbols=available_symbols
     )
 
 if __name__ == "__main__":
