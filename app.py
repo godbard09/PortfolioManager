@@ -138,17 +138,6 @@ def portfolio_web(chat_id):
                 width: 300px;
             }
         </style>
-        <script>
-            function filterSymbols() {
-                let input = document.getElementById("symbolInput").value.toUpperCase();
-                let select = document.getElementById("symbol");
-                let options = select.options;
-                for (let i = 0; i < options.length; i++) {
-                    let txt = options[i].text.toUpperCase();
-                    options[i].style.display = txt.includes(input) ? "" : "none";
-                }
-            }
-        </script>
     </head>
     <body>
         <h1 style="text-align:center;">Portfolio Manager</h1>
@@ -212,8 +201,6 @@ def portfolio_web(chat_id):
                 <option value="buy">Buy</option>
                 <option value="sell">Sell</option>
             </select>
-            <label for="symbolInput">Filter Symbol:</label>
-            <input type="text" id="symbolInput" onkeyup="filterSymbols()" placeholder="Search symbols...">
             <label for="symbol">Symbol:</label>
             <select id="symbol" name="symbol" required>
                 {% for symbol in available_symbols %}
@@ -233,7 +220,8 @@ def portfolio_web(chat_id):
         html_template,
         portfolio=portfolio_data,
         transactions=transactions_data,
-        total_pnl=total_pnl
+        total_pnl=total_pnl,
+        available_symbols=available_symbols
     )
 
 if __name__ == "__main__":
