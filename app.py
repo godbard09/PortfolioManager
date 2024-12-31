@@ -251,7 +251,7 @@ def portfolio_web(chat_id):
             <label for="price">Price:</label>
             <input type="number" id="price" name="price" step="0.01" required>
             <label for="timestamp">Time (UTC+7):</label>
-            <input type="datetime-local" id="timestamp" name="timestamp" required>
+            <input type="date" id="timestamp" name="timestamp" required>
             <button type="submit">Submit</button>
         </form>
     </body>
