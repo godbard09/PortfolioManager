@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, render_template_string
+import threading
 import os
 import json
 import ccxt
@@ -28,6 +29,14 @@ def fetch_symbols():
         return []
 
 app = Flask(__name__)
+
+@app.route('/portfolio', methods=['GET', 'POST'])
+def portfolio_default():
+    chat_id = "default_user"  # ID mặc định
+    if chat_id not in portfolio:
+        portfolio[chat_id] = {"holdings": [], "transactions": []}
+        save_portfolio(portfolio)
+    return portfolio_web(chat_id)
 
 @app.route('/portfolio/<chat_id>', methods=['GET', 'POST'])
 def portfolio_web(chat_id):
