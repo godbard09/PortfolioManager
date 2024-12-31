@@ -4,6 +4,7 @@ import os
 import json
 import ccxt
 from datetime import datetime
+from collections import defaultdict
 
 PORTFOLIO_FILE = "portfolio.json"
 
@@ -106,8 +107,17 @@ def portfolio_web(chat_id):
         holding["current_price"] = fetch_current_price(holding["symbol"])
         holding["current_pnl"] = round((holding["current_price"] - holding["price"]) * holding["quantity"], 2) if holding["current_price"] else "N/A"
 
-    total_pnl = sum(t["pnl"] for t in transactions_data if t["pnl"] is not None)
-    total_pnl += sum(h["current_pnl"] for h in portfolio_data if isinstance(h["current_pnl"], (int, float)))
+    # Calculate P&L by unit
+    pnl_by_unit = defaultdict(float)
+    for holding in portfolio_data:
+        if isinstance(holding["current_pnl"], (int, float)):
+            unit = holding["symbol"].split('/')[1]
+            pnl_by_unit[unit] += holding["current_pnl"]
+
+    for transaction in transactions_data:
+        if transaction.get("pnl") is not None:
+            unit = transaction["symbol"].split('/')[1]
+            pnl_by_unit[unit] += transaction["pnl"]
 
     # Render template
     html_template = """
@@ -151,7 +161,12 @@ def portfolio_web(chat_id):
     <body>
         <h1 style="text-align:center;">Portfolio Manager</h1>
         <div class="summary">
-            <p><b>Total P&L:</b> <span class="{{ 'positive' if total_pnl >= 0 else 'negative' }}">{{ total_pnl | round(2) }}</span></p>
+            <p><b>Total P&L by Unit:</b></p>
+            <ul>
+                {% for unit, pnl in pnl_by_unit.items() %}
+                <li><span class="{{ 'positive' if pnl >= 0 else 'negative' }}">{{ unit }}: {{ pnl | round(2) }}</span></li>
+                {% endfor %}
+            </ul>
         </div>
         <h2 style="text-align:center;">Holdings</h2>
         <table>
@@ -170,7 +185,7 @@ def portfolio_web(chat_id):
                 {% for entry in portfolio %}
                 <tr>
                     <td>{{ entry['symbol'] }}</td>
-                    <td>{{ entry['quantity'] }}</td>
+                    <td>{{ entry['quantity'] }} {{ entry['symbol'].split('/')[0] }}</td>
                     <td>{{ entry['price'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
                     <td>{{ entry['total_cost'] }} {{ entry['symbol'].split('/')[1] }}</td>
@@ -197,7 +212,7 @@ def portfolio_web(chat_id):
                 {% for entry in transactions %}
                 <tr>
                     <td>{{ entry['symbol'] }}</td>
-                    <td>{{ entry['quantity'] }}</td>
+                    <td>{{ entry['quantity'] }} {{ entry['symbol'].split('/')[0] }}</td>
                     <td>{{ entry['buy_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['sell_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['total_sale'] }} {{ entry['symbol'].split('/')[1] }}</td>
@@ -235,7 +250,7 @@ def portfolio_web(chat_id):
         html_template,
         portfolio=portfolio_data,
         transactions=transactions_data,
-        total_pnl=total_pnl,
+        pnl_by_unit=pnl_by_unit,
         available_symbols=available_symbols
     )
 
