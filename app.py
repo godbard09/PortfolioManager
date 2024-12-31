@@ -171,11 +171,11 @@ def portfolio_web(chat_id):
                 <tr>
                     <td>{{ entry['symbol'] }}</td>
                     <td>{{ entry['quantity'] }}</td>
-                    <td>{{ entry['price'] }}</td>
+                    <td>{{ entry['price'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
-                    <td>{{ entry['total_cost'] }}</td>
-                    <td>{{ entry['current_price'] }}</td>
-                    <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }}</td>
+                    <td>{{ entry['total_cost'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td>{{ entry['current_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -198,11 +198,11 @@ def portfolio_web(chat_id):
                 <tr>
                     <td>{{ entry['symbol'] }}</td>
                     <td>{{ entry['quantity'] }}</td>
-                    <td>{{ entry['buy_price'] }}</td>
-                    <td>{{ entry['sell_price'] }}</td>
-                    <td>{{ entry['total_sale'] }}</td>
+                    <td>{{ entry['buy_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td>{{ entry['sell_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td>{{ entry['total_sale'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
-                    <td class="{{ 'positive' if entry['pnl'] >= 0 else 'negative' }}">{{ entry['pnl'] }}</td>
+                    <td class="{{ 'positive' if entry['pnl'] >= 0 else 'negative' }}">{{ entry['pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
