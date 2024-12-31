@@ -3,9 +3,11 @@ import threading
 import os
 import json
 import ccxt
-from datetime import datetime, timedelta
+from datetime import datetime
 
 PORTFOLIO_FILE = "portfolio.json"
+
+# Load and save portfolio
 
 def load_portfolio():
     if os.path.exists(PORTFOLIO_FILE):
@@ -20,6 +22,8 @@ def save_portfolio(portfolio):
 portfolio = load_portfolio()
 exchange = ccxt.kucoin()
 
+# Fetch symbols dynamically
+
 def fetch_symbols():
     try:
         markets = exchange.load_markets()
@@ -28,6 +32,8 @@ def fetch_symbols():
         print(f"Error fetching symbols: {e}")
         return []
 
+# Fetch current price
+
 def fetch_current_price(symbol):
     try:
         ticker = exchange.fetch_ticker(symbol)
@@ -35,6 +41,8 @@ def fetch_current_price(symbol):
     except Exception as e:
         print(f"Error fetching current price for {symbol}: {e}")
         return None
+
+# Flask app
 
 app = Flask(__name__)
 
@@ -103,6 +111,7 @@ def portfolio_web(chat_id):
     total_pnl = sum(t["pnl"] for t in transactions_data if t["pnl"] is not None)
     total_pnl += sum(h["current_pnl"] for h in portfolio_data if isinstance(h["current_pnl"], (int, float)))
 
+    # Render template
     html_template = """
     <!DOCTYPE html>
     <html lang="en">
