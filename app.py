@@ -103,16 +103,21 @@ def portfolio_web(chat_id):
     transactions_data = portfolio[chat_id]["transactions"]
     available_symbols = fetch_symbols()
 
+    # Calculate current price and P&L for holdings
+    for holding in portfolio_data:
+        current_price = fetch_current_price(holding["symbol"])
+        holding["current_price"] = current_price
+        holding["current_pnl"] = round((current_price - holding["price"]) * holding["quantity"], 2) if current_price else 0
+
     # Calculate P&L by unit and symbol
     pnl_table = []
     for holding in portfolio_data:
-        if isinstance(holding["current_pnl"], (int, float)):
-            pnl_table.append({
-                "symbol": holding["symbol"],
-                "quantity": holding["quantity"],
-                "current_pnl": holding["current_pnl"],
-                "unit": holding["symbol"].split('/')[1]
-            })
+        pnl_table.append({
+            "symbol": holding["symbol"],
+            "quantity": holding["quantity"],
+            "current_pnl": holding["current_pnl"],
+            "unit": holding["symbol"].split('/')[1]
+        })
 
     # Render template
     html_template = """
