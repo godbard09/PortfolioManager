@@ -71,7 +71,8 @@ def portfolio_web(chat_id):
                 "symbol": symbol,
                 "quantity": quantity,
                 "price": price,
-                "timestamp": timestamp
+                "timestamp": timestamp,
+                "total_cost": quantity * price
             })
             save_portfolio(portfolio)
 
@@ -86,7 +87,8 @@ def portfolio_web(chat_id):
                             "buy_price": holding["price"],
                             "sell_price": price,
                             "pnl": pnl,
-                            "timestamp": timestamp
+                            "timestamp": timestamp,
+                            "total_sale": quantity * price
                         })
                         holding["quantity"] -= quantity
                         if holding["quantity"] == 0:
@@ -149,7 +151,7 @@ def portfolio_web(chat_id):
     <body>
         <h1 style="text-align:center;">Portfolio Manager</h1>
         <div class="summary">
-            <p><b>Total P&L:</b> <span class="{{ 'positive' if total_pnl >= 0 else 'negative' }}">{{ total_pnl | round(2) }}</span> USD</p>
+            <p><b>Total P&L:</b> <span class="{{ 'positive' if total_pnl >= 0 else 'negative' }}">{{ total_pnl | round(2) }}</span></p>
         </div>
         <h2 style="text-align:center;">Holdings</h2>
         <table>
@@ -159,6 +161,7 @@ def portfolio_web(chat_id):
                     <th>Quantity</th>
                     <th>Buy Price</th>
                     <th>Buy Time</th>
+                    <th>Total Cost</th>
                     <th>Current Price</th>
                     <th>Current P&L</th>
                 </tr>
@@ -170,6 +173,7 @@ def portfolio_web(chat_id):
                     <td>{{ entry['quantity'] }}</td>
                     <td>{{ entry['price'] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
+                    <td>{{ entry['total_cost'] }}</td>
                     <td>{{ entry['current_price'] }}</td>
                     <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }}</td>
                 </tr>
@@ -184,6 +188,7 @@ def portfolio_web(chat_id):
                     <th>Quantity</th>
                     <th>Buy Price</th>
                     <th>Sell Price</th>
+                    <th>Total Sale</th>
                     <th>Sell Time</th>
                     <th>P&L</th>
                 </tr>
@@ -195,6 +200,7 @@ def portfolio_web(chat_id):
                     <td>{{ entry['quantity'] }}</td>
                     <td>{{ entry['buy_price'] }}</td>
                     <td>{{ entry['sell_price'] }}</td>
+                    <td>{{ entry['total_sale'] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
                     <td class="{{ 'positive' if entry['pnl'] >= 0 else 'negative' }}">{{ entry['pnl'] }}</td>
                 </tr>
