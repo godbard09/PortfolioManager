@@ -109,31 +109,6 @@ def portfolio_web(chat_id):
     transactions_data = portfolio[chat_id]["transactions"]
     available_symbols = fetch_symbols()
 
-    # Group holdings by symbol for Total P&L by Symbol
-    grouped_holdings = defaultdict(lambda: {"quantity": 0, "total_cost": 0, "current_pnl": 0, "earliest_timestamp": None})
-    for holding in portfolio_data:
-        symbol = holding["symbol"]
-        current_price = fetch_current_price(symbol)
-        holding["current_price"] = current_price
-        holding["current_pnl"] = round((current_price - holding["price"]) * holding["quantity"], 2) if current_price else 0
-
-        grouped_holdings[symbol]["quantity"] += holding["quantity"]
-        grouped_holdings[symbol]["total_cost"] += holding["total_cost"]
-        grouped_holdings[symbol]["current_pnl"] += holding["current_pnl"]
-        if grouped_holdings[symbol]["earliest_timestamp"] is None or holding["timestamp"] < grouped_holdings[symbol]["earliest_timestamp"]:
-            grouped_holdings[symbol]["earliest_timestamp"] = holding["timestamp"]
-
-    # Prepare P&L table and consolidated holdings
-    pnl_table = []
-    for symbol, data in grouped_holdings.items():
-        current_price = fetch_current_price(symbol)
-        pnl_table.append({
-            "symbol": symbol,
-            "quantity": data["quantity"],
-            "current_pnl": round(data["current_pnl"], 2),
-            "unit": symbol.split('/')[1]
-        })
-
     # Render template
     html_template = """
     <!DOCTYPE html>
@@ -182,25 +157,6 @@ def portfolio_web(chat_id):
     </head>
     <body>
         <h1 style="text-align:center;">Portfolio Manager</h1>
-        <h2 style="text-align:center;">Total P&L by Symbol</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Symbol</th>
-                    <th>Remaining Quantity</th>
-                    <th>Current P&L</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in pnl_table %}
-                <tr>
-                    <td>{{ row['symbol'] }}</td>
-                    <td>{{ row['quantity'] }} {{ row['symbol'].split('/')[0] }}</td>
-                    <td class="{{ 'positive' if row['current_pnl'] >= 0 else 'negative' }}">{{ row['current_pnl'] }} {{ row['unit'] }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
         <h2 style="text-align:center;">Holdings</h2>
         <table>
             <thead>
@@ -292,7 +248,6 @@ def portfolio_web(chat_id):
         html_template,
         portfolio=portfolio_data,  # Keep separate transactions in holdings
         transactions=transactions_data,
-        pnl_table=pnl_table,
         available_symbols=available_symbols
     )
 
