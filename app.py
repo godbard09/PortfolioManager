@@ -110,7 +110,7 @@ def portfolio_web(chat_id):
     available_symbols = fetch_symbols()
 
     # Group holdings by symbol
-    grouped_holdings = defaultdict(lambda: {"quantity": 0, "total_cost": 0, "current_pnl": 0})
+    grouped_holdings = defaultdict(lambda: {"quantity": 0, "total_cost": 0, "current_pnl": 0, "earliest_timestamp": None})
     for holding in portfolio_data:
         symbol = holding["symbol"]
         current_price = fetch_current_price(symbol)
@@ -120,6 +120,8 @@ def portfolio_web(chat_id):
         grouped_holdings[symbol]["quantity"] += holding["quantity"]
         grouped_holdings[symbol]["total_cost"] += holding["total_cost"]
         grouped_holdings[symbol]["current_pnl"] += holding["current_pnl"]
+        if grouped_holdings[symbol]["earliest_timestamp"] is None or holding["timestamp"] < grouped_holdings[symbol]["earliest_timestamp"]:
+            grouped_holdings[symbol]["earliest_timestamp"] = holding["timestamp"]
 
     # Prepare P&L table and consolidated holdings
     pnl_table = []
@@ -139,7 +141,8 @@ def portfolio_web(chat_id):
             "price": avg_buy_price,
             "total_cost": round(data["total_cost"], 2),
             "current_price": current_price,
-            "current_pnl": round(data["current_pnl"], 2)
+            "current_pnl": round(data["current_pnl"], 2),
+            "timestamp": data["earliest_timestamp"]
         })
 
     # Render template
@@ -216,6 +219,7 @@ def portfolio_web(chat_id):
                     <th>Symbol</th>
                     <th>Quantity</th>
                     <th>Buy Price</th>
+                    <th>Buy Time</th>
                     <th>Total Cost</th>
                     <th>Current Price</th>
                     <th>Current P&L</th>
@@ -228,6 +232,7 @@ def portfolio_web(chat_id):
                     <td>{{ entry['symbol'] }}</td>
                     <td>{{ entry['quantity'] }} {{ entry['symbol'].split('/')[0] }}</td>
                     <td>{{ entry['price'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td>{{ entry['timestamp'] }}</td>
                     <td>{{ entry['total_cost'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['current_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
