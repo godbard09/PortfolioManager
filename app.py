@@ -87,7 +87,7 @@ def portfolio_web(chat_id):
             for holding in portfolio[chat_id]["holdings"]:
                 if holding["symbol"] == symbol:
                     if holding["quantity"] >= quantity:
-                        pnl = (price - holding["price"])*quantity
+                        pnl = (price - holding["price"]) * quantity
                         portfolio[chat_id]["transactions"].append({
                             "symbol": symbol,
                             "quantity": quantity,
@@ -109,12 +109,22 @@ def portfolio_web(chat_id):
     transactions_data = portfolio[chat_id]["transactions"]
     available_symbols = fetch_symbols()
 
+    # Calculate current price and P&L for holdings
     for holding in portfolio_data:
-        holding["current_price"] = fetch_current_price(holding["symbol"])
-        if holding["current_price"]:
-            holding["current_pnl"] = round((holding["current_price"] - holding["price"]) * holding["quantity"], 2)
-        else:
-            holding["current_pnl"] = 0
+        if "current_price" not in holding or "current_pnl" not in holding:
+            current_price = fetch_current_price(holding["symbol"])
+            holding["current_price"] = current_price
+            holding["current_pnl"] = round((current_price - holding["price"]) * holding["quantity"], 2) if current_price else 0
+
+    # Calculate P&L by unit and symbol
+    pnl_table = []
+    for holding in portfolio_data:
+        pnl_table.append({
+            "symbol": holding["symbol"],
+            "quantity": holding["quantity"],
+            "current_pnl": holding["current_pnl"],
+            "unit": holding["symbol"].split('/')[1]
+        })
 
     # Render template
     html_template = """
@@ -144,10 +154,45 @@ def portfolio_web(chat_id):
             .negative {
                 color: red;
             }
+            .summary {
+                margin: 20px auto;
+                text-align: center;
+                font-size: 1.2em;
+            }
+            form {
+                margin: 20px auto;
+                text-align: center;
+            }
+            .delete-button {
+                background-color: red;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                cursor: pointer;
+            }
         </style>
     </head>
     <body>
         <h1 style="text-align:center;">Portfolio Manager</h1>
+        <h2 style="text-align:center;">Total P&L by Symbol</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Remaining Quantity</th>
+                    <th>Current P&L</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in pnl_table %}
+                <tr>
+                    <td>{{ row['symbol'] }}</td>
+                    <td>{{ row['quantity'] }} {{ row['symbol'].split('/')[0] }}</td>
+                    <td class="{{ 'positive' if row['current_pnl'] >= 0 else 'negative' }}">{{ row['current_pnl'] }} {{ row['unit'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         <h2 style="text-align:center;">Holdings</h2>
         <table>
             <thead>
@@ -159,24 +204,24 @@ def portfolio_web(chat_id):
                     <th>Total Cost</th>
                     <th>Current Price</th>
                     <th>Current P&L</th>
-                    <th>Action</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 {% for entry in portfolio %}
                 <tr>
                     <td>{{ entry['symbol'] }}</td>
-                    <td>{{ entry['quantity'] }}</td>
-                    <td>{{ entry['price'] }}</td>
+                    <td>{{ entry['quantity'] }} {{ entry['symbol'].split('/')[0] }}</td>
+                    <td>{{ entry['price'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
-                    <td>{{ entry['total_cost'] }}</td>
-                    <td>{{ entry['current_price'] }}</td>
-                    <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }}</td>
+                    <td>{{ entry['total_cost'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td>{{ entry['current_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>
-                        <form method="POST">
+                        <form method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="symbol" value="{{ entry['symbol'] }}">
-                            <button type="submit">Delete</button>
+                            <button type="submit" class="delete-button">Delete</button>
                         </form>
                     </td>
                 </tr>
@@ -200,16 +245,37 @@ def portfolio_web(chat_id):
                 {% for entry in transactions %}
                 <tr>
                     <td>{{ entry['symbol'] }}</td>
-                    <td>{{ entry['quantity'] }}</td>
-                    <td>{{ entry['buy_price'] }}</td>
-                    <td>{{ entry['sell_price'] }}</td>
-                    <td>{{ entry['total_sale'] }}</td>
+                    <td>{{ entry['quantity'] }} {{ entry['symbol'].split('/')[0] }}</td>
+                    <td>{{ entry['buy_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td>{{ entry['sell_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
+                    <td>{{ entry['total_sale'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['timestamp'] }}</td>
-                    <td class="{{ 'positive' if entry['pnl'] >= 0 else 'negative' }}">{{ entry['pnl'] }}</td>
+                    <td class="{{ 'positive' if entry['pnl'] >= 0 else 'negative' }}">{{ entry['pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        <form method="POST">
+            <h3>Buy or Sell</h3>
+            <label for="action">Action:</label>
+            <select id="action" name="action">
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+            </select>
+            <label for="symbol">Symbol:</label>
+            <select id="symbol" name="symbol" required>
+                {% for symbol in available_symbols %}
+                <option value="{{ symbol }}">{{ symbol }}</option>
+                {% endfor %}
+            </select>
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity" name="quantity" step="0.01" required>
+            <label for="price">Price:</label>
+            <input type="number" id="price" name="price" step="0.01" required>
+            <label for="timestamp">Time (UTC+7):</label>
+            <input type="date" id="timestamp" name="timestamp" required>
+            <button type="submit">Submit</button>
+        </form>
     </body>
     </html>
     """
@@ -217,8 +283,11 @@ def portfolio_web(chat_id):
     return render_template_string(
         html_template,
         portfolio=portfolio_data,
-        transactions=transactions_data
+        transactions=transactions_data,
+        pnl_table=pnl_table,
+        available_symbols=available_symbols
     )
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
