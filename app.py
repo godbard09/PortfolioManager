@@ -109,21 +109,37 @@ def portfolio_web(chat_id):
     transactions_data = portfolio[chat_id]["transactions"]
     available_symbols = fetch_symbols()
 
-    # Calculate current price and P&L for holdings
+    # Group holdings by symbol
+    grouped_holdings = defaultdict(lambda: {"quantity": 0, "total_cost": 0, "current_pnl": 0})
     for holding in portfolio_data:
-        if "current_price" not in holding or "current_pnl" not in holding:
-            current_price = fetch_current_price(holding["symbol"])
-            holding["current_price"] = current_price
-            holding["current_pnl"] = round((current_price - holding["price"]) * holding["quantity"], 2) if current_price else 0
+        symbol = holding["symbol"]
+        current_price = fetch_current_price(symbol)
+        holding["current_price"] = current_price
+        holding["current_pnl"] = round((current_price - holding["price"]) * holding["quantity"], 2) if current_price else 0
 
-    # Calculate P&L by unit and symbol
+        grouped_holdings[symbol]["quantity"] += holding["quantity"]
+        grouped_holdings[symbol]["total_cost"] += holding["total_cost"]
+        grouped_holdings[symbol]["current_pnl"] += holding["current_pnl"]
+
+    # Prepare P&L table and consolidated holdings
     pnl_table = []
-    for holding in portfolio_data:
+    consolidated_holdings = []
+    for symbol, data in grouped_holdings.items():
+        current_price = fetch_current_price(symbol)
+        avg_buy_price = data["total_cost"] / data["quantity"] if data["quantity"] > 0 else 0
         pnl_table.append({
-            "symbol": holding["symbol"],
-            "quantity": holding["quantity"],
-            "current_pnl": holding["current_pnl"],
-            "unit": holding["symbol"].split('/')[1]
+            "symbol": symbol,
+            "quantity": data["quantity"],
+            "current_pnl": round(data["current_pnl"], 2),
+            "unit": symbol.split('/')[1]
+        })
+        consolidated_holdings.append({
+            "symbol": symbol,
+            "quantity": data["quantity"],
+            "price": avg_buy_price,
+            "total_cost": round(data["total_cost"], 2),
+            "current_price": current_price,
+            "current_pnl": round(data["current_pnl"], 2)
         })
 
     # Render template
@@ -200,7 +216,6 @@ def portfolio_web(chat_id):
                     <th>Symbol</th>
                     <th>Quantity</th>
                     <th>Buy Price</th>
-                    <th>Buy Time</th>
                     <th>Total Cost</th>
                     <th>Current Price</th>
                     <th>Current P&L</th>
@@ -213,7 +228,6 @@ def portfolio_web(chat_id):
                     <td>{{ entry['symbol'] }}</td>
                     <td>{{ entry['quantity'] }} {{ entry['symbol'].split('/')[0] }}</td>
                     <td>{{ entry['price'] }} {{ entry['symbol'].split('/')[1] }}</td>
-                    <td>{{ entry['timestamp'] }}</td>
                     <td>{{ entry['total_cost'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td>{{ entry['current_price'] }} {{ entry['symbol'].split('/')[1] }}</td>
                     <td class="{{ 'positive' if entry['current_pnl'] >= 0 else 'negative' }}">{{ entry['current_pnl'] }} {{ entry['symbol'].split('/')[1] }}</td>
@@ -282,7 +296,7 @@ def portfolio_web(chat_id):
 
     return render_template_string(
         html_template,
-        portfolio=portfolio_data,
+        portfolio=consolidated_holdings,  # Use the consolidated data
         transactions=transactions_data,
         pnl_table=pnl_table,
         available_symbols=available_symbols
